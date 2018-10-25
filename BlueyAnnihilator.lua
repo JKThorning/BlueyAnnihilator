@@ -5,7 +5,7 @@ local sversion = "1.0"
 local prefix = "Bluey_refresh_"..version
 local PLAYERNAME = UnitName("PLAYER")
 local BoldFont = "Interface\\AddOns\\BlueyAnnihilator\\Media\\Fonts\\BF.ttf"
-
+local o
 anniButtonAlpha = 0.3
 local colors = {
 	["red"] = "fa8072",
@@ -44,6 +44,7 @@ local function getEnchantInfo(enchant)
 end
 
 local defaultSettings = {
+	["locked"] = false,
 	["mhSliderVal"] = 0,
 	["point"] = "CENTER",
 	["active"] = true,
@@ -51,7 +52,6 @@ local defaultSettings = {
 	["xOfs"] = 0,
 	["lastSave"] = date("%m/%d/%y %H:%M:%S"),
 	["stacks"] = 0,
-	["k"] = false,
 	["relativePoint"] = "CENTER",
 	["ohSliderVal"] = 0,
 	["yOfs"] = 0,
@@ -95,14 +95,26 @@ function SlashCmdList_AddSlashCommand(name, func, ...)
 end
 SlashCmdList_AddSlashCommand('BLUEY_SLASH', function(msg)
 	local substring = strsub(msg,0,5)
+	if string.match(msg, "lock") then
+		if o.locked then 
+			BA.mf:SetScript("OnDragStart", BA.mf.StartMoving)
+		else
+			BA.mf:SetScript("OnDragStart", nil)
+		end
+		o.locked = not(o.locked)
+		if o.locked then
+			BA.print("Main frame movement locked.")
+		else
+			BA.print("Main frame movement unlocked.")
+		end
 
-	if string.match(msg, "off") then
-		BlueyAnnihilatorSV.active = false
+	elseif string.match(msg, "off") then
+		o.active = false
 		BA.print("Bluey Annihilator disabled. Type </bluey on> to enable.")
 		swapFrame.setActive(false)
 		BA.mf:Hide()
 	elseif string.match(msg, "on") then
-		BlueyAnnihilatorSV.active = true
+		o.active = true
 		BA.mf:Show()
 		BA.print("Bluey Annihilator enabled.")
 	elseif string.match(substring, "scale") then
@@ -111,7 +123,7 @@ SlashCmdList_AddSlashCommand('BLUEY_SLASH', function(msg)
 		local minscale = 0.5
 		if val>=minscale then
 			BA.print("Scale set to "..val)
-			BlueyAnnihilatorSV.scale = val
+			o.scale = val
 			BA.tf.text:SetFont(BoldFont, 14*val, "THINOUTLINE")
 			BA.mf:SetWidth(50*val)
 			BA.mf:SetHeight(50*val)
@@ -127,10 +139,14 @@ end, 'BLUEY', 'BLUEYANNIHILATOR')
 
 function BA.print( msg )
 	if msg == nil then
-		DEFAULT_CHAT_FRAME:AddMessage("<|cFFAAAAFFBluey Annihilator|r> ".."a nil value")
+		DEFAULT_CHAT_FRAME:AddMessage("<|cFFAAAAFFBluey Annihilator|r> ".."|cff"..colors.red.."nil")
 		return
 	end
 	DEFAULT_CHAT_FRAME:AddMessage("<|cFFAAAAFFBluey Annihilator|r> "..msg)
+end
+
+local function tableHasKey(table,key)
+    return table[key] ~= nil
 end
 
 BA.ini = CreateFrame("Frame")
@@ -140,28 +156,39 @@ BA.ini:SetScript("OnEvent", function(self, event, ...)
 	
 	if event == "VARIABLES_LOADED" then
 		self:UnregisterEvent("VARIABLES_LOADED")
-
-		if (BlueyAnnihilatorSV == nil) then
+		o = BlueyAnnihilatorSV
+		if (o == nil) then
 			BA.print("First addon use, applying default settings. Please report bugs to me on discord @ |cFFAAAAFFBluey:0480|r")
 			BlueyAnnihilatorSV = defaultSettings
-		elseif not(BlueyAnnihilatorSV.version == version) then
+			o = BlueyAnnihilatorSV
+		elseif not(o.version == version) then
 			BA.print("New major addon version, applying default settings. Please report bugs to me on discord @ |cFFAAAAFFBluey:0480|r")
 			BlueyAnnihilatorSV = defaultSettings
-		elseif not(BlueyAnnihilatorSV.sversion == sversion) then
-			BA.print("New addon subversion, applying default settings. Please report bugs to me on discord @ |cFFAAAAFFBluey:0480|r")
-			BlueyAnnihilatorSV = defaultSettings
+			o = BlueyAnnihilatorSV
+		elseif not(o.sversion == sversion) then
+			BA.print("New addon subversion.. Please report bugs to me on discord @ |cFFAAAAFFBluey:0480|r")
+			for k,v in pairs(defaultSettings) do
+				if not tableHasKey(BlueyAnnihilatorSV,k) then
+					o[k] = v
+					BA.print("New: "..tostring(k).. " = "..tostring(v))
+				end
+			end
+			o.sversion = sversion
 		else
-			BA.print("Addon loaded from state saved ".. BlueyAnnihilatorSV.lastSave..". Please report bugs to me on discord @ |cFFAAAAFFBluey:0480|r")
+			BA.print("Addon loaded from state saved ".. o.lastSave..". Please report bugs to me on discord @ |cFFAAAAFFBluey:0480|r")
 		end
 		
-		BlueyAnnihilatorSV.timer = 0
-		BlueyAnnihilatorSV.duration = 0
-		local point, relativePoint, xOfs, yOfs = BlueyAnnihilatorSV.point, BlueyAnnihilatorSV.relativePoint, BlueyAnnihilatorSV.xOfs, BlueyAnnihilatorSV.yOfs
+		o.timer = 0
+		o.duration = 0
+		local point, relativePoint, xOfs, yOfs = o.point, o.relativePoint, o.xOfs, o.yOfs
 		
 		BA.mf:SetPoint(point,UIParent,relativePoint,xOfs,yOfs)
-		BA.mf:SetWidth(50*BlueyAnnihilatorSV.scale)
-		BA.mf:SetHeight(50*BlueyAnnihilatorSV.scale)
-		BA.mf.activeText:SetFont(BoldFont, 6*BlueyAnnihilatorSV.scale, "OUTLINE")
+		BA.mf:SetWidth(50*o.scale)
+		BA.mf:SetHeight(50*o.scale)
+		if not o.locked then
+			BA.mf:SetScript("OnDragStart", BA.mf.StartMoving)
+		end
+		BA.mf.activeText:SetFont(BoldFont, 6*o.scale, "OUTLINE")
 		BA.receiver:RegisterEvent("CHAT_MSG_ADDON")
 		BA.tracker:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
 		BA.anniWatcher:RegisterEvent("RAID_ROSTER_UPDATE")
@@ -170,7 +197,7 @@ BA.ini:SetScript("OnEvent", function(self, event, ...)
 		BA.anniWatcher:RegisterEvent("UNIT_INVENTORY_CHANGED")
 		BA.anniWatcher:RegisterEvent("PLAYER_TARGET_CHANGED")
 
-		BA.tf.text:SetFont(BoldFont, 14*BlueyAnnihilatorSV["scale"], "THINOUTLINE")
+		BA.tf.text:SetFont(BoldFont, 14*o["scale"], "THINOUTLINE")
 		BA.tf.text:SetPoint("CENTER")
 		BA.tf.text:SetJustifyH("CENTER")
 		BA.tf.text:SetJustifyV("CENTER")
@@ -178,27 +205,27 @@ BA.ini:SetScript("OnEvent", function(self, event, ...)
 
 		swapFrame:RegisterEvent("UNIT_INVENTORY_CHANGED")
 		swapFrame:RegisterEvent("PLAYER_LOGIN")
-		swapFrame.setActive(BlueyAnnihilatorSV.autoswap)
+		swapFrame.setActive(o.autoswap)
 
-		if BlueyAnnihilatorSV.mhSliderVal then
-			swapFrame.mhSlider:SetValue(BlueyAnnihilatorSV.mhSliderVal)
+		if o.mhSliderVal then
+			swapFrame.mhSlider:SetValue(o.mhSliderVal)
 		else
 			swapFrame.mhSlider:SetValue(0)
 		end
 
-		if BlueyAnnihilatorSV.ohSliderVal then
-			swapFrame.ohSlider:SetValue(BlueyAnnihilatorSV.ohSliderVal)
+		if o.ohSliderVal then
+			swapFrame.ohSlider:SetValue(o.ohSliderVal)
 		else
 			swapFrame.ohSlider:SetValue(0)
 		end
 		
-		if BlueyAnnihilatorSV.active then
+		if o.active then
 			BA.mf:Show()
 		else
 			BA.mf:Hide()
 		end		
 	elseif event == "PLAYER_LOGOUT" then
-		BlueyAnnihilatorSV.lastSave = date("%m/%d/%y %H:%M:%S")
+		o.lastSave = date("%m/%d/%y %H:%M:%S")
 	end
 end)
 
@@ -209,15 +236,14 @@ BA.mf:EnableMouse(true)
 BA.mf:RegisterForDrag("LeftButton")
 BA.mf:RegisterForClicks("AnyUp")
 BA.mf:SetClampedToScreen(true)
-BA.mf:SetScript("OnDragStart", BA.mf.StartMoving)
 BA.mf:SetScript("OnDragStop", function()
 
 	BA.mf:StopMovingOrSizing()
 	local point, relativeTo, relativePoint, xOfs, yOfs = BA.mf:GetPoint()
-	BlueyAnnihilatorSV.point = point
-	BlueyAnnihilatorSV.relativePoint = relativePoint
-	BlueyAnnihilatorSV.xOfs = xOfs
-	BlueyAnnihilatorSV.yOfs = yOfs
+	o.point = point
+	o.relativePoint = relativePoint
+	o.xOfs = xOfs
+	o.yOfs = yOfs
 	
 end)
 BA.mf:SetScript("OnClick", function(self, button, down)
@@ -229,7 +255,7 @@ BA.mf:SetScript("OnClick", function(self, button, down)
 			swapFrame:Show()
 		end
 	elseif button == "LeftButton" then
-		swapFrame.setActive(not(BlueyAnnihilatorSV.autoswap))
+		swapFrame.setActive(not(o.autoswap))
 	end
 end)
 
@@ -260,11 +286,11 @@ BA.receiver:SetScript("OnEvent", function(self, event, message, ...)
 	if message == prefix then
 		local stacks = select(1,...)
 		if tonumber(stacks) > 2 then
-			BlueyAnnihilatorSV.stacks = tonumber(stacks)
+			o.stacks = tonumber(stacks)
 			-- MH --
 			if swapFrame.MH_enabled then
 				if swapFrame.MH_threshold and swapFrame.MH_anniLink then
-					if swapFrame.OLD_MH_itemLink and BlueyAnnihilatorSV.mhSliderVal < 45 then
+					if swapFrame.OLD_MH_itemLink and o.mhSliderVal < 45 then
 						EquipItemByName(swapFrame.OLD_MH_itemLink,16)
 						swapFrame.MH_anni = false
 					end
@@ -273,15 +299,15 @@ BA.receiver:SetScript("OnEvent", function(self, event, message, ...)
 			-- OH --
 			if swapFrame.OH_enabled then
 				if swapFrame.OH_threshold and swapFrame.OH_anniLink then
-					if swapFrame.OLD_OH_itemLink and BlueyAnnihilatorSV.ohSliderVal < 45 then
+					if swapFrame.OLD_OH_itemLink and o.ohSliderVal < 45 then
 						EquipItemByName(swapFrame.OLD_OH_itemLink,17)
 						swapFrame.OH_anni = false
 					end
 				end
 			end
 		end
-		BlueyAnnihilatorSV.applied = true
-		BlueyAnnihilatorSV.timer = GetTime()
+		o.applied = true
+		o.timer = GetTime()
 		BA.mfCooldown:SetCooldown(GetTime(),45)
 	end
 end)
@@ -294,13 +320,13 @@ function BA.scanAuras()
 		if UnitDebuff("TARGET",i) then	
 			local name, _, texture, count, _, duration, expirationTime  = UnitDebuff("TARGET", i)
 			if UnitDebuff("TARGET", i) == "Armor Shatter" then
-				BlueyAnnihilatorSV.stacks = tonumber(count)
+				o.stacks = tonumber(count)
 				BA.auraScanner:SetScript("OnUpdate", nil)
 				return
 			end
 			i = i + 1
 		else
-			BlueyAnnihilatorSV.stacks = 0
+			o.stacks = 0
 			BA.auraScanner:SetScript("OnUpdate", nil)
 		end
 	end)
@@ -315,36 +341,36 @@ BA.tracker:SetScript("OnEvent", function(self, event, ...)
 
 		if eventType == "SPELL_AURA_APPLIED" then
 			BA.mfCooldown:SetCooldown(now,45)
-			BlueyAnnihilatorSV.timer = now
-			BlueyAnnihilatorSV.stacks = 1
-			BlueyAnnihilatorSV.applied = true
+			o.timer = now
+			o.stacks = 1
+			o.applied = true
 
 		elseif eventType == "SPELL_AURA_APPLIED_DOSE" or eventType == "SPELL_AURA_REMOVED_DOSE" then
 		-- removed for the first proc, applied for 2 and 3 stack procs
 			BA.mfCooldown:SetCooldown(now,45)
-			BlueyAnnihilatorSV.timer = now
-			BlueyAnnihilatorSV.stacks = select(13,...) 
-			BlueyAnnihilatorSV.applied = true
+			o.timer = now
+			o.stacks = select(13,...) 
+			o.applied = true
 
 		elseif eventType == "SPELL_AURA_REMOVED" then
 		-- Armor Shatter has faded
-			BlueyAnnihilatorSV.applied = false
-			BlueyAnnihilatorSV.stacks = 0
+			o.applied = false
+			o.stacks = 0
 			BA.tf.text:SetText("t (s)")
 		elseif eventType == "SPELL_AURA_REFRESH" then
-			BlueyAnnihilatorSV.timer = now
+			o.timer = now
 			BA.mfCooldown:SetCooldown(now,45)
-			BlueyAnnihilatorSV.applied = true
-			if tonumber(BlueyAnnihilatorSV.stacks) < 3 then
+			o.applied = true
+			if tonumber(o.stacks) < 3 then
 				BA.scanAuras()
 			end
-			SendAddonMessage(prefix, BlueyAnnihilatorSV.stacks , "RAID")
-			if BlueyAnnihilatorSV.stacks == 3 then
-				if swapFrame.OLD_OH_itemLink and BlueyAnnihilatorSV.ohSliderVal < 45 then
+			SendAddonMessage(prefix, o.stacks , "RAID")
+			if o.stacks == 3 then
+				if swapFrame.OLD_OH_itemLink and o.ohSliderVal < 45 then
 					EquipItemByName(swapFrame.OLD_OH_itemLink,17)
 					swapFrame.OH_anni = false
 				end
-				if swapFrame.OLD_MH_itemLink and BlueyAnnihilatorSV.mhSliderVal < 45 then
+				if swapFrame.OLD_MH_itemLink and o.mhSliderVal < 45 then
 					EquipItemByName(swapFrame.OLD_MH_itemLink,16)
 					swapFrame.MH_anni = false
 				end
@@ -361,16 +387,16 @@ BA.tracker:SetScript("OnUpdate", function(self, elapsed)
 	timesincelastupdate = timesincelastupdate + elapsed
 	timesincelastscan = timesincelastscan + elapsed
 
-	if BlueyAnnihilatorSV.applied then
+	if o.applied then
 		if timesincelastupdate > updatedelay then
 			timesincelastupdate = 0
-			local duration = (45-(GetTime()-BlueyAnnihilatorSV.timer))
+			local duration = (45-(GetTime()-o.timer))
 			if duration >= 0 then
-				BA.tf.text:SetText(floor(duration).." ("..BlueyAnnihilatorSV.stacks..")")
-				BlueyAnnihilatorSV.delay = 0
+				BA.tf.text:SetText(floor(duration).." ("..o.stacks..")")
+				o.delay = 0
 			else 
-				BlueyAnnihilatorSV.applied = false
-				BlueyAnnihilatorSV.stacks = 1
+				o.applied = false
+				o.stacks = 1
 				BA.tf.text:SetText("t (s)")
 			end
 		end
@@ -421,6 +447,7 @@ local function checkAnnihilators(unit)
 		end
 	end
 end
+
 BA.anniWatcher:SetScript("OnEvent", function(self,event,...)
 	if event == ("RAID_ROSTER_UPDATE" or event == "VARIABLES_LOADED") then
 		raiders_TOTAL = GetNumRaidMembers()
@@ -438,7 +465,7 @@ BA.anniWatcher:SetScript("OnEvent", function(self,event,...)
 		
 	elseif event == ("PLAYER_REGEN_DISABLED") then
 		-- enter combat --
-		BlueyAnnihilatorSV.duration = 0
+		o.duration = 0
 	elseif event == ("PLAYER_TARGET_CHANGED") then
 		BA.scanAuras()
 	end
@@ -449,7 +476,7 @@ swapFrame = CreateFrame("FRAME", "BA_swapFrame", BA.mf)
 swapFrame.needsUpdate = true
 swapFrame.annihs = {}
 swapFrame:Hide()
-swapFrame:SetPoint("BOTTOMLEFT", swapFrame:GetParent(), "TOPLEFT", 0,3)
+swapFrame:SetPoint("BOTTOMLEFT", swapFrame:GetParent(), "TOPLEFT", 0,13)
 swapFrame:SetWidth(150)
 swapFrame:SetHeight(60)
 swapFrame.background = swapFrame:CreateTexture("swapFrame_background", "ARTWORK")
@@ -460,11 +487,11 @@ BA.mf.activeText:SetPoint("BOTTOM", BA.mf, "TOP", 0, 3)
 BA.mf.activeText.prefix = "Autoswap  "
 swapFrame.setActive = function(active)
 	if active then
-		BlueyAnnihilatorSV.autoswap = true
+		o.autoswap = true
 		swapFrame:RegisterEvent("COMBAT_LOG_EVENT")
 		BA.mf.activeText:SetText(BA.mf.activeText.prefix.."|cff"..colors.green.."on")
 	else
-		BlueyAnnihilatorSV.autoswap = false
+		o.autoswap = false
 		swapFrame:UnregisterEvent("COMBAT_LOG_EVENT")
 		BA.mf.activeText:SetText(BA.mf.activeText.prefix.."off")
 		if swapFrame.OLD_MH_itemLink then
@@ -493,8 +520,8 @@ sMH:SetScript("OnValueChanged", function(self,value)
 	if value < 1 then
 		swapFrame.MH_enabled = false
 		sMH.text:SetText(sMH.prefix.."OFF")
-		if BlueyAnnihilatorSV.ohSliderVal == 0 then
-			if next(BlueyAnnihilatorSV) then -- only when not logging in
+		if o.ohSliderVal == 0 then
+			if next(o) then -- only when not logging in
 				swapFrame.setActive(false)
 			end				
 		end	
@@ -507,7 +534,7 @@ sMH:SetScript("OnValueChanged", function(self,value)
 		sMH.text:SetText(sMH.prefix..value)
 	end
 	swapFrame.MH_threshold = value			
-	BlueyAnnihilatorSV.mhSliderVal = value
+	o.mhSliderVal = value
 end)
 
 swapFrame.ohSlider = CreateFrame("Slider", "ohSlider", swapFrame, "OptionsSliderTemplate")
@@ -525,8 +552,8 @@ sOH:SetScript("OnValueChanged", function(self,value)
 	if value < 1 then
 		swapFrame.OH_enabled = false
 		sOH.text:SetText(sOH.prefix.."OFF")
-		if BlueyAnnihilatorSV.mhSliderVal == 0 then
-			if next(BlueyAnnihilatorSV) then -- only when not logging in
+		if o.mhSliderVal == 0 then
+			if next(o) then -- only when not logging in
 				swapFrame.setActive(false)
 			end
 		end
@@ -539,9 +566,8 @@ sOH:SetScript("OnValueChanged", function(self,value)
 		sOH.text:SetText(sOH.prefix..value)
 	end
 	swapFrame.OH_threshold = value
-	BlueyAnnihilatorSV.ohSliderVal = value
+	o.ohSliderVal = value
 end)
-
 
 function swapFrame.getA_buttons(itemLink) 
 	if not sMH.A_buttons then
@@ -637,7 +663,7 @@ function swapFrame.update(...)
 
 				MHb.overlay = MHb:CreateTexture(nil, "OVERLAY")
 				MHb.overlay:SetAllPoints()
-				if BlueyAnnihilatorSV.MH_anniLink == itemLink then
+				if o.MH_anniLink == itemLink then
 					MHb.selected = true
 					MHb.overlay:SetTexture(unpack(colors.greenrgb))
 					swapFrame.MH_anniLink = itemLink
@@ -654,7 +680,7 @@ function swapFrame.update(...)
 				MHb:EnableMouse(true)
 				MHb:SetScript("OnMouseDown", function(self, button, down)
 					swapFrame.MH_anniLink = self.itemLink
-					BlueyAnnihilatorSV.MH_anniLink = self.itemLink
+					o.MH_anniLink = self.itemLink
 					for i,sMHb in ipairs(swapFrame.mhSlider.A_buttons) do
 						if sMHb.itemLink == self.itemLink then
 							sMHb.selected = true
@@ -687,7 +713,7 @@ function swapFrame.update(...)
 
 				OHb.overlay = OHb:CreateTexture(nil, "OVERLAY")
 				OHb.overlay:SetAllPoints()
-				if BlueyAnnihilatorSV.OH_anniLink == itemLink then
+				if o.OH_anniLink == itemLink then
 					OHb.selected = true
 					OHb.overlay:SetTexture(unpack(colors.greenrgb))
 					swapFrame.OH_anniLink = itemLink
@@ -704,7 +730,7 @@ function swapFrame.update(...)
 				OHb:EnableMouse(true)
 				OHb:SetScript("OnMouseDown", function(self, button, down)
 					swapFrame.OH_anniLink = self.itemLink
-					BlueyAnnihilatorSV.OH_anniLink = self.itemLink
+					o.OH_anniLink = self.itemLink
 					for i,sOHb in ipairs(swapFrame.ohSlider.A_buttons) do
 						
 						if sOHb.itemLink == self.itemLink then
@@ -752,23 +778,23 @@ function swapFrame.update(...)
 end
 
 swapFrame:SetScript("OnEvent", function(self,event, ...)
-	if not BlueyAnnihilatorSV.active then return end
+	if not o.active then return end
 	if event == "COMBAT_LOG_EVENT" then
 		-- autoswap --
 		local timestamp,eventType,source,srcName,_,dstGUID,auraDest,_,spellID, spellName = ...
 		if strmatch(eventType,"SWING") and srcName == PLAYERNAME then
-			local duration = (45-(GetTime()-BlueyAnnihilatorSV.timer))
-			local stacks = tonumber(BlueyAnnihilatorSV.stacks)
+			local duration = (45-(GetTime()-o.timer))
+			local stacks = tonumber(o.stacks)
 			if not stacks then stacks = 0 end
 			-- MH --
-			if swapFrame.MH_enabled and BlueyAnnihilatorSV.autoswap then
+			if swapFrame.MH_enabled and o.autoswap then
 				if swapFrame.MH_threshold and swapFrame.MH_anniLink then
 					if ( (duration < swapFrame.MH_threshold) or (stacks < 3) ) and not(swapFrame.MH_anni) then
 						swapFrame.OLD_MH_itemLink = GetInventoryItemLink("PLAYER",16)
 						EquipItemByName(swapFrame.MH_anniLink, 16)
 						swapFrame.MH_anni = true
 					elseif (duration > swapFrame.MH_threshold) and swapFrame.MH_anni then
-						if tonumber(BlueyAnnihilatorSV.stacks) < 3 then return end
+						if tonumber(o.stacks) < 3 then return end
 						if swapFrame.OLD_MH_itemLink then
 							EquipItemByName(swapFrame.OLD_MH_itemLink,16)
 							swapFrame.MH_anni = false
@@ -780,14 +806,14 @@ swapFrame:SetScript("OnEvent", function(self,event, ...)
 			end
 
 			-- OH --
-			if swapFrame.OH_enabled and BlueyAnnihilatorSV.autoswap then
+			if swapFrame.OH_enabled and o.autoswap then
 				if ( (duration < swapFrame.OH_threshold) or (stacks < 3) ) and swapFrame.OH_anniLink then
 					if (duration < swapFrame.OH_threshold) and not(swapFrame.OH_anni) then
 						swapFrame.OLD_OH_itemLink = GetInventoryItemLink("PLAYER",17)
 						EquipItemByName(swapFrame.OH_anniLink, 17)
 						swapFrame.OH_anni = true
 					elseif (duration > swapFrame.OH_threshold) and swapFrame.OH_anni then
-						if BlueyAnnihilatorSV.stacks < 3 then return end
+						if o.stacks < 3 then return end
 						if swapFrame.OLD_OH_itemLink then
 							EquipItemByName(swapFrame.OLD_OH_itemLink,17)
 							swapFrame.OH_anni = false
