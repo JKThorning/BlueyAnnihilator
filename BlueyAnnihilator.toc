@@ -1,0 +1,9 @@
+## Interface: 20400
+## Title: |cff6593f5BlueyAnnihilator
+## Version: 1.2.2
+## Notes: Helps raids keep up the Shatter Armor debuff. |cff6593f5Made by Bluey, Warmane, Outland.
+## Author: Bluey
+## SavedVariables: BlueyAnnihilatorSV
+
+BlueyAnnihilator.lua
+BlueyAnnihilator.toc
