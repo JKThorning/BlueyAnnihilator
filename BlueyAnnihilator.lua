@@ -642,7 +642,12 @@ function swapFrame.update(...)
 				"|?c?f?f?(%x*)|?H?([^:]*):?(%d+):?(%d*):?(%d*):?(%d*):?(%d*):?(%d*):?(%-?%d*):?(%-?%d*):?(%d*):?(%d*):?(%-?%d*)|?h?%[?([^%[%]]*)%]?|?h?|?r?")
 			local enchantID, enchantName = getEnchantInfo(Enchant)
 			local MHb, OHb = swapFrame.getA_buttons(itemLink)
-			
+			local texture = ANNIHILATOR_TEXTURE
+			if enchantID then
+				texture = select(3,GetSpellInfo(enchantID))
+			else
+				enchantName = "No enchant"
+			end
 			-- create frame for MH if it doesnt exist -- 
 			if not MHb then
 				swapFrame.newButton = true
@@ -651,14 +656,7 @@ function swapFrame.update(...)
 				MHb.itemLink = itemLink
 				MHb.selected = false
 				MHb.texture = MHb:CreateTexture(nil, "ARTWORK")
-				local texture = select(3,GetSpellInfo(enchantID))
-				if not texture or (strlen(texture)<5) then 
-					MHb.texture:SetTexture(ANNIHILATOR_TEXTURE)
-					enchantName = "No enchant"
-				else
-					MHb.texture:SetTexture(texture)
-				end
-				
+				MHb.texture:SetTexture(texture)
 				MHb.texture:SetAllPoints()
 
 				MHb.overlay = MHb:CreateTexture(nil, "OVERLAY")
@@ -679,15 +677,21 @@ function swapFrame.update(...)
 
 				MHb:EnableMouse(true)
 				MHb:SetScript("OnMouseDown", function(self, button, down)
-					swapFrame.MH_anniLink = self.itemLink
-					o.MH_anniLink = self.itemLink
-					for i,sMHb in ipairs(swapFrame.mhSlider.A_buttons) do
-						if sMHb.itemLink == self.itemLink then
-							sMHb.selected = true
-							sMHb.overlay:SetTexture(unpack(colors.greenrgb))
-						else
-							sMHb.selected = false
-							sMHb.overlay:SetTexture(unpack(colors.redrgb))
+					if self.itemLink == swapFrame.MH_anniLink then
+						swapFrame.MH_anniLink = nil
+						self.selected = false
+						self.overlay:SetTexture(unpack(colors.redrgb))
+					else
+						swapFrame.MH_anniLink = self.itemLink
+						o.MH_anniLink = self.itemLink
+						for i,sMHb in ipairs(swapFrame.mhSlider.A_buttons) do
+							if sMHb.itemLink == self.itemLink then
+								sMHb.selected = true
+								sMHb.overlay:SetTexture(unpack(colors.greenrgb))
+							else
+								sMHb.selected = false
+								sMHb.overlay:SetTexture(unpack(colors.redrgb))
+							end
 						end
 					end
 				end)
@@ -702,13 +706,7 @@ function swapFrame.update(...)
 				OHb.itemLink = itemLink
 				OHb.selected = false
 				OHb.texture = OHb:CreateTexture(nil, "ARTWORK")
-				local texture = select(3,GetSpellInfo(enchantID))
-				if not texture or (strlen(texture)<5) then
-					OHb.texture:SetTexture(ANNIHILATOR_TEXTURE)
-					enchantName = "No enchant"
-				else
-					OHb.texture:SetTexture(texture)
-				end
+				OHb.texture:SetTexture(texture)
 				OHb.texture:SetAllPoints()
 
 				OHb.overlay = OHb:CreateTexture(nil, "OVERLAY")
@@ -729,16 +727,22 @@ function swapFrame.update(...)
 				
 				OHb:EnableMouse(true)
 				OHb:SetScript("OnMouseDown", function(self, button, down)
-					swapFrame.OH_anniLink = self.itemLink
-					o.OH_anniLink = self.itemLink
-					for i,sOHb in ipairs(swapFrame.ohSlider.A_buttons) do
-						
-						if sOHb.itemLink == self.itemLink then
-							sOHb.selected = true
-							sOHb.overlay:SetTexture(unpack(colors.greenrgb))
-						else
-							sOHb.selected = false
-							sOHb.overlay:SetTexture(unpack(colors.redrgb))
+					if self.itemLink == swapFrame.OH_anniLink then
+						swapFrame.OH_anniLink = nil
+						self.selected = false
+						self.overlay:SetTexture(unpack(colors.redrgb))
+					else
+						swapFrame.OH_anniLink = self.itemLink
+						o.OH_anniLink = self.itemLink
+						for i,sOHb in ipairs(swapFrame.ohSlider.A_buttons) do
+							
+							if sOHb.itemLink == self.itemLink then
+								sOHb.selected = true
+								sOHb.overlay:SetTexture(unpack(colors.greenrgb))
+							else
+								sOHb.selected = false
+								sOHb.overlay:SetTexture(unpack(colors.redrgb))
+							end
 						end
 					end
 				end)
@@ -777,6 +781,64 @@ function swapFrame.update(...)
 	end
 end
 
+function swapFrame.equipFromBag(equipLink, inventorySlot)
+	for bagID = 0,4 do
+		local numberOfSlots = GetContainerNumSlots(bagID)
+		local itemLink
+		for slot = 1,numberOfSlots do
+			itemLink = GetContainerItemLink(bagID, slot)
+			if itemLink and itemLink == equipLink then
+				BA.print((itemLink..bagID..slot..inventorySlot))
+				PickupContainerItem(bagID, slot)
+				EquipCursorItem(inventorySlot)
+			end
+		end
+	end
+end
+
+function swapFrame.checkMH(duration, stacks)
+	if swapFrame.MH_enabled and o.autoswap then
+		if swapFrame.MH_threshold and swapFrame.MH_anniLink then
+			if ( (duration < swapFrame.MH_threshold) or (stacks < 3) ) and not(swapFrame.MH_anni) then
+				swapFrame.OLD_MH_itemLink = GetInventoryItemLink("PLAYER",16)
+				swapFrame.equipFromBag(swapFrame.MH_anniLink, 16)
+				--EquipItemByName(swapFrame.MH_anniLink, 16)
+				swapFrame.MH_anni = true
+			elseif (duration > swapFrame.MH_threshold) and swapFrame.MH_anni then
+				if tonumber(o.stacks) < 3 then return end
+				if swapFrame.OLD_MH_itemLink then
+					EquipItemByName(swapFrame.OLD_MH_itemLink,16)
+					swapFrame.MH_anni = false
+				end
+			else
+				--print(duration.. " / " ..swapFrame.MH_threshold)
+			end
+		end
+	end
+end
+
+function swapFrame.checkOH(duration, stacks)
+	if swapFrame.OH_enabled and o.autoswap then
+		if ( (duration < swapFrame.OH_threshold) or (stacks < 3) ) and swapFrame.OH_anniLink then
+			if (duration < swapFrame.OH_threshold) and not(swapFrame.OH_anni) then
+				BA.print("Equipping OH")
+				swapFrame.OLD_OH_itemLink = GetInventoryItemLink("PLAYER",17)
+				EquipItemByName(swapFrame.OH_anniLink, 17)
+				swapFrame.OH_anni = true
+			elseif (duration > swapFrame.OH_threshold) and swapFrame.OH_anni then
+				if o.stacks < 3 then return end
+				if swapFrame.OLD_OH_itemLink then
+					EquipItemByName(swapFrame.OLD_OH_itemLink,17)
+					swapFrame.OH_anni = false
+				end
+			else
+				--print(duration.. " / " ..swapFrame.OH_threshold)
+			end
+		else
+			--print("Threshold or itemLink not set for OH")
+		end
+	end
+end
 swapFrame:SetScript("OnEvent", function(self,event, ...)
 	if not o.active then return end
 	if event == "COMBAT_LOG_EVENT" then
@@ -787,52 +849,18 @@ swapFrame:SetScript("OnEvent", function(self,event, ...)
 			local stacks = tonumber(o.stacks)
 			if not stacks then stacks = 0 end
 			-- MH --
-			if swapFrame.MH_enabled and o.autoswap then
-				if swapFrame.MH_threshold and swapFrame.MH_anniLink then
-					if ( (duration < swapFrame.MH_threshold) or (stacks < 3) ) and not(swapFrame.MH_anni) then
-						swapFrame.OLD_MH_itemLink = GetInventoryItemLink("PLAYER",16)
-						EquipItemByName(swapFrame.MH_anniLink, 16)
-						swapFrame.MH_anni = true
-					elseif (duration > swapFrame.MH_threshold) and swapFrame.MH_anni then
-						if tonumber(o.stacks) < 3 then return end
-						if swapFrame.OLD_MH_itemLink then
-							EquipItemByName(swapFrame.OLD_MH_itemLink,16)
-							swapFrame.MH_anni = false
-						end
-					else
-						--print(duration.. " / " ..swapFrame.MH_threshold)
-					end
-				end
-			end
+			swapFrame.checkMH(duration, stacks)
 
 			-- OH --
-			if swapFrame.OH_enabled and o.autoswap then
-				if ( (duration < swapFrame.OH_threshold) or (stacks < 3) ) and swapFrame.OH_anniLink then
-					if (duration < swapFrame.OH_threshold) and not(swapFrame.OH_anni) then
-						swapFrame.OLD_OH_itemLink = GetInventoryItemLink("PLAYER",17)
-						EquipItemByName(swapFrame.OH_anniLink, 17)
-						swapFrame.OH_anni = true
-					elseif (duration > swapFrame.OH_threshold) and swapFrame.OH_anni then
-						if o.stacks < 3 then return end
-						if swapFrame.OLD_OH_itemLink then
-							EquipItemByName(swapFrame.OLD_OH_itemLink,17)
-							swapFrame.OH_anni = false
-						end
-					else
-						--print(duration.. " / " ..swapFrame.OH_threshold)
-					end
-				else
-					--print("Threshold or itemLink not set for OH")
-				end
-			end
+			swapFrame.checkOH(duration, stacks)
 		end
-
 	elseif event == "PLAYER_LOGIN" then
 		swapFrame.needsUpdate = true
 		swapFrame:UnregisterEvent("PLAYER_LOGIN")
 	elseif event == "UNIT_INVENTORY_CHANGED" then
 		if ... == "player" then
 			swapFrame.needsUpdate = true
+			swapFrame.update("player")
 		end
 	end
 end)
