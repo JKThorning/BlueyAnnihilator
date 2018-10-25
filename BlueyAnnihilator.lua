@@ -128,6 +128,7 @@ SlashCmdList_AddSlashCommand('BLUEY_SLASH', function(msg)
 			BA.mf:SetWidth(50*val)
 			BA.mf:SetHeight(50*val)
 			BA.mf.activeText:SetFont(BoldFont, 6*val, "OUTLINE")
+			swapFrame:SetPoint("BOTTOMLEFT", swapFrame:GetParent(), "TOPLEFT", 0, 6 + BA.mf.activeText:GetHeight())
 		else
 			BA.print("Scale size too low. Minimum is "..minscale..".")
 		end
@@ -139,10 +140,10 @@ end, 'BLUEY', 'BLUEYANNIHILATOR')
 
 function BA.print( msg )
 	if msg == nil then
-		DEFAULT_CHAT_FRAME:AddMessage("<|cFFAAAAFFBluey Annihilator|r> ".."|cff"..colors.red.."nil")
+		BA.print("|cff"..colors.red.."nil")
 		return
 	end
-	DEFAULT_CHAT_FRAME:AddMessage("<|cFFAAAAFFBluey Annihilator|r> "..msg)
+	DEFAULT_CHAT_FRAME:AddMessage("<|cFFAAAAFFBluey Annihilator|r:"..date("%m/%d/%y %H:%M:%S").."> "..msg)
 end
 
 local function tableHasKey(table,key)
@@ -251,6 +252,7 @@ BA.mf:SetScript("OnClick", function(self, button, down)
 		if swapFrame:IsShown() then
 			swapFrame:Hide()
 		else
+			swapFrame:SetPoint("BOTTOMLEFT", swapFrame:GetParent(), "TOPLEFT", 0, 6 + BA.mf.activeText:GetHeight())
 			swapFrame.update("player")
 			swapFrame:Show()
 		end
@@ -476,7 +478,6 @@ swapFrame = CreateFrame("FRAME", "BA_swapFrame", BA.mf)
 swapFrame.needsUpdate = true
 swapFrame.annihs = {}
 swapFrame:Hide()
-swapFrame:SetPoint("BOTTOMLEFT", swapFrame:GetParent(), "TOPLEFT", 0,13)
 swapFrame:SetWidth(150)
 swapFrame:SetHeight(60)
 swapFrame.background = swapFrame:CreateTexture("swapFrame_background", "ARTWORK")
@@ -789,7 +790,6 @@ function swapFrame.smartEquip(equipLink, inventorySlot)
 			for slot = 1,numberOfSlots do
 				itemLink = GetContainerItemLink(bagID, slot)
 				if itemLink and itemLink == equipLink then
-					BA.print((itemLink..bagID..slot..inventorySlot))
 					ClearCursor()
 					PickupContainerItem(bagID, slot)
 					EquipCursorItem(inventorySlot)
@@ -817,7 +817,6 @@ function swapFrame.checkMH(duration, stacks)
 					--swapFrame.MH_anni = false
 				end
 			else
-				--print(duration.. " / " ..swapFrame.MH_threshold)
 			end
 		end
 	end
@@ -839,10 +838,8 @@ function swapFrame.checkOH(duration, stacks)
 					--swapFrame.OH_anni = false
 				end
 			else
-				--print(duration.. " / " ..swapFrame.OH_threshold)
 			end
 		else
-			--print("Threshold or itemLink not set for OH")
 		end
 	end
 end
