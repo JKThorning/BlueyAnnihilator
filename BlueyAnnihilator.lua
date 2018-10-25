@@ -789,6 +789,7 @@ function swapFrame.equipFromBag(equipLink, inventorySlot)
 			itemLink = GetContainerItemLink(bagID, slot)
 			if itemLink and itemLink == equipLink then
 				BA.print((itemLink..bagID..slot..inventorySlot))
+				ClearCursor()
 				PickupContainerItem(bagID, slot)
 				EquipCursorItem(inventorySlot)
 			end
@@ -801,14 +802,15 @@ function swapFrame.checkMH(duration, stacks)
 		if swapFrame.MH_threshold and swapFrame.MH_anniLink then
 			if ( (duration < swapFrame.MH_threshold) or (stacks < 3) ) and not(swapFrame.MH_anni) then
 				swapFrame.OLD_MH_itemLink = GetInventoryItemLink("PLAYER",16)
-				swapFrame.equipFromBag(swapFrame.MH_anniLink, 16)
-				--EquipItemByName(swapFrame.MH_anniLink, 16)
-				swapFrame.MH_anni = true
+				--swapFrame.equipFromBag(swapFrame.MH_anniLink, 16)
+				EquipItemByName(swapFrame.MH_anniLink, 16)
+				--swapFrame.MH_anni = true
 			elseif (duration > swapFrame.MH_threshold) and swapFrame.MH_anni then
 				if tonumber(o.stacks) < 3 then return end
 				if swapFrame.OLD_MH_itemLink then
+					--swapFrame.equipFromBag(swapFrame.OLD_MH_itemLink, 16)
 					EquipItemByName(swapFrame.OLD_MH_itemLink,16)
-					swapFrame.MH_anni = false
+					--swapFrame.MH_anni = false
 				end
 			else
 				--print(duration.. " / " ..swapFrame.MH_threshold)
@@ -821,15 +823,16 @@ function swapFrame.checkOH(duration, stacks)
 	if swapFrame.OH_enabled and o.autoswap then
 		if ( (duration < swapFrame.OH_threshold) or (stacks < 3) ) and swapFrame.OH_anniLink then
 			if (duration < swapFrame.OH_threshold) and not(swapFrame.OH_anni) then
-				BA.print("Equipping OH")
 				swapFrame.OLD_OH_itemLink = GetInventoryItemLink("PLAYER",17)
-				EquipItemByName(swapFrame.OH_anniLink, 17)
-				swapFrame.OH_anni = true
+				swapFrame.equipFromBag(swapFrame.OH_anniLink, 17)
+				--EquipItemByName(swapFrame.OH_anniLink, 17)
+				--swapFrame.OH_anni = true
 			elseif (duration > swapFrame.OH_threshold) and swapFrame.OH_anni then
 				if o.stacks < 3 then return end
 				if swapFrame.OLD_OH_itemLink then
-					EquipItemByName(swapFrame.OLD_OH_itemLink,17)
-					swapFrame.OH_anni = false
+					swapFrame.equipFromBag(swapFrame.OH_anniLink, 17)
+					--EquipItemByName(swapFrame.OLD_OH_itemLink,17)
+					--swapFrame.OH_anni = false
 				end
 			else
 				--print(duration.. " / " ..swapFrame.OH_threshold)
