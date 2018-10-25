@@ -291,7 +291,7 @@ BA.receiver:SetScript("OnEvent", function(self, event, message, ...)
 			if swapFrame.MH_enabled then
 				if swapFrame.MH_threshold and swapFrame.MH_anniLink then
 					if swapFrame.OLD_MH_itemLink and o.mhSliderVal < 45 then
-						EquipItemByName(swapFrame.OLD_MH_itemLink,16)
+						swapFrame.smartEquip(swapFrame.OLD_MH_itemLink,16)
 						swapFrame.MH_anni = false
 					end
 				end
@@ -300,7 +300,7 @@ BA.receiver:SetScript("OnEvent", function(self, event, message, ...)
 			if swapFrame.OH_enabled then
 				if swapFrame.OH_threshold and swapFrame.OH_anniLink then
 					if swapFrame.OLD_OH_itemLink and o.ohSliderVal < 45 then
-						EquipItemByName(swapFrame.OLD_OH_itemLink,17)
+						swapFrame.smartEquip(swapFrame.OLD_OH_itemLink,17)
 						swapFrame.OH_anni = false
 					end
 				end
@@ -367,11 +367,11 @@ BA.tracker:SetScript("OnEvent", function(self, event, ...)
 			SendAddonMessage(prefix, o.stacks , "RAID")
 			if o.stacks == 3 then
 				if swapFrame.OLD_OH_itemLink and o.ohSliderVal < 45 then
-					EquipItemByName(swapFrame.OLD_OH_itemLink,17)
+					swapFrame.smartEquip(swapFrame.OLD_OH_itemLink,17)
 					swapFrame.OH_anni = false
 				end
 				if swapFrame.OLD_MH_itemLink and o.mhSliderVal < 45 then
-					EquipItemByName(swapFrame.OLD_MH_itemLink,16)
+					swapFrame.smartEquip(swapFrame.OLD_MH_itemLink,16)
 					swapFrame.MH_anni = false
 				end
 			end
@@ -495,11 +495,11 @@ swapFrame.setActive = function(active)
 		swapFrame:UnregisterEvent("COMBAT_LOG_EVENT")
 		BA.mf.activeText:SetText(BA.mf.activeText.prefix.."off")
 		if swapFrame.OLD_MH_itemLink then
-			EquipItemByName(swapFrame.OLD_MH_itemLink,16)
+			swapFrame.smartEquip(swapFrame.OLD_MH_itemLink,16)
 			swapFrame.MH_anni = false
 		end
 		if swapFrame.OLD_OH_itemLink then
-			EquipItemByName(swapFrame.OLD_OH_itemLink,17)
+			swapFrame.smartEquip(swapFrame.OLD_OH_itemLink,17)
 			swapFrame.OH_anni = false
 		end
 	end
@@ -526,7 +526,7 @@ sMH:SetScript("OnValueChanged", function(self,value)
 			end				
 		end	
 		if swapFrame.OLD_MH_itemLink then
-			EquipItemByName(swapFrame.OLD_MH_itemLink,16)
+			swapFrame.smartEquip(swapFrame.OLD_MH_itemLink,16)
 			swapFrame.MH_anni = false
 		end
 	else
@@ -558,7 +558,7 @@ sOH:SetScript("OnValueChanged", function(self,value)
 			end
 		end
 		if swapFrame.OLD_OH_itemLink then
-			EquipItemByName(swapFrame.OLD_OH_itemLink,17)
+			swapFrame.smartEquip(swapFrame.OLD_OH_itemLink,17)
 			swapFrame.OH_anni = false
 		end
 	else
@@ -781,19 +781,23 @@ function swapFrame.update(...)
 	end
 end
 
-function swapFrame.equipFromBag(equipLink, inventorySlot)
-	for bagID = 0,4 do
-		local numberOfSlots = GetContainerNumSlots(bagID)
-		local itemLink
-		for slot = 1,numberOfSlots do
-			itemLink = GetContainerItemLink(bagID, slot)
-			if itemLink and itemLink == equipLink then
-				BA.print((itemLink..bagID..slot..inventorySlot))
-				ClearCursor()
-				PickupContainerItem(bagID, slot)
-				EquipCursorItem(inventorySlot)
+function swapFrame.smartEquip(equipLink, inventorySlot)
+	if IsEquippedItem(equipLink) then
+		for bagID = 0,4 do
+			local numberOfSlots = GetContainerNumSlots(bagID)
+			local itemLink
+			for slot = 1,numberOfSlots do
+				itemLink = GetContainerItemLink(bagID, slot)
+				if itemLink and itemLink == equipLink then
+					BA.print((itemLink..bagID..slot..inventorySlot))
+					ClearCursor()
+					PickupContainerItem(bagID, slot)
+					EquipCursorItem(inventorySlot)
+				end
 			end
 		end
+	else
+		EquipItemByName(equipLink, inventorySlot)
 	end
 end
 
@@ -802,14 +806,14 @@ function swapFrame.checkMH(duration, stacks)
 		if swapFrame.MH_threshold and swapFrame.MH_anniLink then
 			if ( (duration < swapFrame.MH_threshold) or (stacks < 3) ) and not(swapFrame.MH_anni) then
 				swapFrame.OLD_MH_itemLink = GetInventoryItemLink("PLAYER",16)
-				--swapFrame.equipFromBag(swapFrame.MH_anniLink, 16)
-				EquipItemByName(swapFrame.MH_anniLink, 16)
+				swapFrame.smartEquip(swapFrame.MH_anniLink, 16)
+				--EquipItemByName(swapFrame.MH_anniLink, 16)
 				--swapFrame.MH_anni = true
 			elseif (duration > swapFrame.MH_threshold) and swapFrame.MH_anni then
 				if tonumber(o.stacks) < 3 then return end
 				if swapFrame.OLD_MH_itemLink then
-					--swapFrame.equipFromBag(swapFrame.OLD_MH_itemLink, 16)
-					EquipItemByName(swapFrame.OLD_MH_itemLink,16)
+					swapFrame.smartEquip(swapFrame.OLD_MH_itemLink, 16)
+					--EquipItemByName(swapFrame.OLD_MH_itemLink,16)
 					--swapFrame.MH_anni = false
 				end
 			else
@@ -824,13 +828,13 @@ function swapFrame.checkOH(duration, stacks)
 		if ( (duration < swapFrame.OH_threshold) or (stacks < 3) ) and swapFrame.OH_anniLink then
 			if (duration < swapFrame.OH_threshold) and not(swapFrame.OH_anni) then
 				swapFrame.OLD_OH_itemLink = GetInventoryItemLink("PLAYER",17)
-				swapFrame.equipFromBag(swapFrame.OH_anniLink, 17)
+				swapFrame.smartEquip(swapFrame.OH_anniLink, 17)
 				--EquipItemByName(swapFrame.OH_anniLink, 17)
 				--swapFrame.OH_anni = true
 			elseif (duration > swapFrame.OH_threshold) and swapFrame.OH_anni then
 				if o.stacks < 3 then return end
 				if swapFrame.OLD_OH_itemLink then
-					swapFrame.equipFromBag(swapFrame.OH_anniLink, 17)
+					swapFrame.smartEquip(swapFrame.OH_anniLink, 17)
 					--EquipItemByName(swapFrame.OLD_OH_itemLink,17)
 					--swapFrame.OH_anni = false
 				end
