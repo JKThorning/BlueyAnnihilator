@@ -26,9 +26,6 @@ SLASH COMMANDS:
 
 https://github.com/JKThorning/BlueyAnnihilator
 
-https://i.imgur.com/oxN8k2x.png
-https://i.imgur.com/JEvlvHZ.png
-
 HOW TO DELETE SAVED VARIABLES:
 
 - Go to your World of Warcraft dictionary
