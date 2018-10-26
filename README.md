@@ -23,14 +23,13 @@ SLASH COMMANDS:
 - /bluey on
 - /bluey off
 - /bluey scale x -- x needs to be a number larger than 0.5. Default size is 1.
+- /bluey lock
 
 
 https://github.com/JKThorning/BlueyAnnihilator
 
 https://i.imgur.com/oxN8k2x.png
 https://i.imgur.com/JEvlvHZ.png
-
-If you have an older version installed, please delete your saved variables for this addon before you log in with the new version. 
 
 HOWTO:
 
