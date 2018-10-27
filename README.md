@@ -1,4 +1,4 @@
-# BlueyAnnihilator - Development branch
+# BlueyAnnihilator
 
 Game client version 2.4.3
 Title: BlueyAnnihilator
