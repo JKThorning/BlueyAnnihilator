@@ -468,6 +468,7 @@ BA.anniWatcher:SetScript("OnEvent", function(self,event,...)
 	elseif event == ("PLAYER_REGEN_DISABLED") then
 		-- enter combat --
 		o.duration = 0
+		swapFrame.update("player")
 	elseif event == ("PLAYER_TARGET_CHANGED") then
 		BA.scanAuras()
 	end
@@ -525,8 +526,7 @@ sMH:SetScript("OnValueChanged", function(self,value)
 			end				
 		end	
 		if swapFrame.OLD_MH_itemLink then
-			swapFrame.smartEquip(swapFrame.OLD_MH_itemLink,16)
-			swapFrame.MH_anni = false
+			swapFrame.queue(swapFrame.OLD_MH_itemLink,16)
 		end
 	else
 		swapFrame.MH_enabled = true
@@ -557,8 +557,7 @@ sOH:SetScript("OnValueChanged", function(self,value)
 			end
 		end
 		if swapFrame.OLD_OH_itemLink then
-			swapFrame.smartEquip(swapFrame.OLD_OH_itemLink,17)
-			swapFrame.OH_anni = false
+			swapFrame.queue(swapFrame.OLD_OH_itemLink,17)
 		end
 	else
 		swapFrame.OH_enabled = true
@@ -842,7 +841,7 @@ function swapFrame.checkOH(duration, stacks)
 		end
 	end
 end
-
+swapFrame.Swapper = CreateFrame("FRAME")
 function swapFrame.queue(equipLink, inventorySlot)
 	if equipLink and inventorySlot and type(inventorySlot) == "number" then
 		if not swapFrame.equipQueue then
@@ -852,11 +851,11 @@ function swapFrame.queue(equipLink, inventorySlot)
 	else
 		return false
 	end
-	swapFrame:SetScript("OnUpdate", function(self)
+	swapFrame.Swapper:SetScript("OnUpdate", function(self, elapsed)
 		if GetCursorInfo() then return end
 		local t = tremove(swapFrame.equipQueue, 1)
 		if t then
-			self.smartEquip(t.link, t.slot)
+			swapFrame.smartEquip(t.link, t.slot)
 		else
 			self:SetScript("OnUpdate", nil)
 		end
