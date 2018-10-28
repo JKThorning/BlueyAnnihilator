@@ -1,7 +1,8 @@
 local BA = {}
 local swapFrame
 local version = "1.2.2"
-local sversion = "1.0"
+local sversion = "1.1"
+local versionInfo = "Added a queue for swapping weapons, so it will happen over multiple frames. This queue system also checks if your curser alredy has an item in it, before trying to swap to a new item."
 local prefix = "Bluey_refresh_"..version
 local PLAYERNAME = UnitName("PLAYER")
 local BoldFont = "Interface\\AddOns\\BlueyAnnihilator\\Media\\Fonts\\BF.ttf"
@@ -166,8 +167,9 @@ BA.ini:SetScript("OnEvent", function(self, event, ...)
 			BA.print("New major addon version, applying default settings. Please report bugs to me on discord @ |cFFAAAAFFBluey:0480|r")
 			BlueyAnnihilatorSV = defaultSettings
 			o = BlueyAnnihilatorSV
+			BA.print("Changes in this version: "..versionInfo)
 		elseif not(o.sversion == sversion) then
-			BA.print("New addon subversion.. Please report bugs to me on discord @ |cFFAAAAFFBluey:0480|r")
+			BA.print("New addon subversion. Please report bugs to me on discord @ |cFFAAAAFFBluey:0480|r")
 			for k,v in pairs(defaultSettings) do
 				if not tableHasKey(BlueyAnnihilatorSV,k) then
 					o[k] = v
@@ -175,6 +177,7 @@ BA.ini:SetScript("OnEvent", function(self, event, ...)
 				end
 			end
 			o.sversion = sversion
+			BA.print("Changes in this version: "..versionInfo)
 		else
 			BA.print("Addon loaded from state saved ".. o.lastSave..". Please report bugs to me on discord @ |cFFAAAAFFBluey:0480|r")
 		end
@@ -245,8 +248,8 @@ BA.mf:SetScript("OnDragStop", function()
 	o.relativePoint = relativePoint
 	o.xOfs = xOfs
 	o.yOfs = yOfs
-	
 end)
+
 BA.mf:SetScript("OnClick", function(self, button, down)
 	if button == "RightButton" then
 		if swapFrame:IsShown() then
@@ -286,6 +289,7 @@ BA.tf.A_users:SetText("")
 BA.receiver = CreateFrame("Frame")
 BA.receiver:SetScript("OnEvent", function(self, event, message, ...)
 	if message == prefix then
+		
 		local stacks = select(1,...)
 		if tonumber(stacks) > 2 then
 			o.stacks = tonumber(stacks)
@@ -293,8 +297,7 @@ BA.receiver:SetScript("OnEvent", function(self, event, message, ...)
 			if swapFrame.MH_enabled then
 				if swapFrame.MH_threshold and swapFrame.MH_anniLink then
 					if swapFrame.OLD_MH_itemLink and o.mhSliderVal < 45 then
-						swapFrame.smartEquip(swapFrame.OLD_MH_itemLink,16)
-						swapFrame.MH_anni = false
+						swapFrame.queue(swapFrame.OLD_MH_itemLink,16)
 					end
 				end
 			end
@@ -302,8 +305,7 @@ BA.receiver:SetScript("OnEvent", function(self, event, message, ...)
 			if swapFrame.OH_enabled then
 				if swapFrame.OH_threshold and swapFrame.OH_anniLink then
 					if swapFrame.OLD_OH_itemLink and o.ohSliderVal < 45 then
-						swapFrame.smartEquip(swapFrame.OLD_OH_itemLink,17)
-						swapFrame.OH_anni = false
+						swapFrame.queue(swapFrame.OLD_OH_itemLink,17)
 					end
 				end
 			end
@@ -369,12 +371,10 @@ BA.tracker:SetScript("OnEvent", function(self, event, ...)
 			SendAddonMessage(prefix, o.stacks , "RAID")
 			if o.stacks == 3 then
 				if swapFrame.OLD_OH_itemLink and o.ohSliderVal < 45 then
-					swapFrame.smartEquip(swapFrame.OLD_OH_itemLink,17)
-					swapFrame.OH_anni = false
+					swapFrame.queue(swapFrame.OLD_OH_itemLink,17)
 				end
 				if swapFrame.OLD_MH_itemLink and o.mhSliderVal < 45 then
-					swapFrame.smartEquip(swapFrame.OLD_MH_itemLink,16)
-					swapFrame.MH_anni = false
+					swapFrame.queue(swapFrame.OLD_MH_itemLink,16)
 				end
 			end
 		end
@@ -496,12 +496,10 @@ swapFrame.setActive = function(active)
 		swapFrame:UnregisterEvent("COMBAT_LOG_EVENT")
 		BA.mf.activeText:SetText(BA.mf.activeText.prefix.."off")
 		if swapFrame.OLD_MH_itemLink then
-			swapFrame.smartEquip(swapFrame.OLD_MH_itemLink,16)
-			swapFrame.MH_anni = false
+			swapFrame.queue(swapFrame.OLD_MH_itemLink,16)
 		end
 		if swapFrame.OLD_OH_itemLink then
-			swapFrame.smartEquip(swapFrame.OLD_OH_itemLink,17)
-			swapFrame.OH_anni = false
+			swapFrame.queue(swapFrame.OLD_OH_itemLink,17)
 		end
 	end
 end
@@ -793,6 +791,7 @@ function swapFrame.smartEquip(equipLink, inventorySlot)
 					ClearCursor()
 					PickupContainerItem(bagID, slot)
 					EquipCursorItem(inventorySlot)
+					ClearCursor()
 				end
 			end
 		end
@@ -806,13 +805,13 @@ function swapFrame.checkMH(duration, stacks)
 		if swapFrame.MH_threshold and swapFrame.MH_anniLink then
 			if ( (duration < swapFrame.MH_threshold) or (stacks < 3) ) and not(swapFrame.MH_anni) then
 				swapFrame.OLD_MH_itemLink = GetInventoryItemLink("PLAYER",16)
-				swapFrame.smartEquip(swapFrame.MH_anniLink, 16)
+				swapFrame.queue(swapFrame.MH_anniLink, 16)
 				--EquipItemByName(swapFrame.MH_anniLink, 16)
 				--swapFrame.MH_anni = true
 			elseif (duration > swapFrame.MH_threshold) and swapFrame.MH_anni then
 				if tonumber(o.stacks) < 3 then return end
 				if swapFrame.OLD_MH_itemLink then
-					swapFrame.smartEquip(swapFrame.OLD_MH_itemLink, 16)
+					swapFrame.queue(swapFrame.OLD_MH_itemLink, 16)
 					--EquipItemByName(swapFrame.OLD_MH_itemLink,16)
 					--swapFrame.MH_anni = false
 				end
@@ -827,13 +826,13 @@ function swapFrame.checkOH(duration, stacks)
 		if ( (duration < swapFrame.OH_threshold) or (stacks < 3) ) and swapFrame.OH_anniLink then
 			if (duration < swapFrame.OH_threshold) and not(swapFrame.OH_anni) then
 				swapFrame.OLD_OH_itemLink = GetInventoryItemLink("PLAYER",17)
-				swapFrame.smartEquip(swapFrame.OH_anniLink, 17)
+				swapFrame.queue(swapFrame.OH_anniLink, 17)
 				--EquipItemByName(swapFrame.OH_anniLink, 17)
 				--swapFrame.OH_anni = true
 			elseif (duration > swapFrame.OH_threshold) and swapFrame.OH_anni then
 				if o.stacks < 3 then return end
 				if swapFrame.OLD_OH_itemLink then
-					swapFrame.smartEquip(swapFrame.OH_anniLink, 17)
+					swapFrame.queue(swapFrame.OH_anniLink, 17)
 					--EquipItemByName(swapFrame.OLD_OH_itemLink,17)
 					--swapFrame.OH_anni = false
 				end
@@ -843,6 +842,28 @@ function swapFrame.checkOH(duration, stacks)
 		end
 	end
 end
+
+function swapFrame.queue(equipLink, inventorySlot)
+	if equipLink and inventorySlot and type(inventorySlot) == "number" then
+		if not swapFrame.equipQueue then
+			swapFrame.equipQueue = {}
+		end
+		tinsert(swapFrame.equipQueue, {["link"] = equipLink, ["slot"] = inventorySlot})
+	else
+		return false
+	end
+	swapFrame:SetScript("OnUpdate", function(self)
+		if GetCursorInfo() then return end
+		local t = tremove(swapFrame.equipQueue, 1)
+		if t then
+			self.smartEquip(t.link, t.slot)
+		else
+			self:SetScript("OnUpdate", nil)
+		end
+	end)
+	return true
+end
+
 swapFrame:SetScript("OnEvent", function(self,event, ...)
 	if not o.active then return end
 	if event == "COMBAT_LOG_EVENT" then
@@ -853,18 +874,19 @@ swapFrame:SetScript("OnEvent", function(self,event, ...)
 			local stacks = tonumber(o.stacks)
 			if not stacks then stacks = 0 end
 			-- MH --
-			swapFrame.checkMH(duration, stacks)
+			self.checkMH(duration, stacks)
 
 			-- OH --
-			swapFrame.checkOH(duration, stacks)
+			self.checkOH(duration, stacks)
 		end
 	elseif event == "PLAYER_LOGIN" then
-		swapFrame.needsUpdate = true
-		swapFrame:UnregisterEvent("PLAYER_LOGIN")
+		self.needsUpdate = true
+		self.update("player")
+		self:UnregisterEvent("PLAYER_LOGIN")
 	elseif event == "UNIT_INVENTORY_CHANGED" then
 		if ... == "player" then
-			swapFrame.needsUpdate = true
-			swapFrame.update("player")
+			self.needsUpdate = true
+			self.update(...)
 		end
 	end
 end)
