@@ -7,6 +7,12 @@ Author: Bluey
 
 This addon is a raid addon for tracking the usage of Annihilator.
 
+INSTALLING:
+- Download by clicling "Clone or download" and then "Download Zip"
+- Extract folder content
+- Rename the new folder ("BlueyAnnihilatorxxxxxxx") to exactly "BlueyAnnihilator"
+- Place the folder now named "BlueyAnnihilator" in your Addons folder
+
 This picture shows what the addon looks like at 3 stacks of Armor Shatter (frames set to a large size, default is smaller).
 https://i.imgur.com/mpEsnP3.png
 
