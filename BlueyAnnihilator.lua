@@ -852,7 +852,7 @@ function swapFrame.queue(equipLink, inventorySlot)
 		return false
 	end
 	swapFrame.Swapper:SetScript("OnUpdate", function(self, elapsed)
-		if GetCursorInfo() then return end
+		if GetCursorInfo() then ClearCursor() end
 		local t = tremove(swapFrame.equipQueue, 1)
 		if t then
 			swapFrame.smartEquip(t.link, t.slot)
