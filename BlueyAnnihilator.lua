@@ -1,7 +1,8 @@
 local BA = {}
 local swapFrame
 local version = "1.2.2"
-local sversion = "1.0"
+local sversion = "1.1"
+local versionInfo = "Added a queue for swapping weapons, so it will happen over multiple frames. This queue system also checks if your curser alredy has an item in it, before trying to swap to a new item."
 local prefix = "Bluey_refresh_"..version
 local PLAYERNAME = UnitName("PLAYER")
 local BoldFont = "Interface\\AddOns\\BlueyAnnihilator\\Media\\Fonts\\BF.ttf"
@@ -128,6 +129,7 @@ SlashCmdList_AddSlashCommand('BLUEY_SLASH', function(msg)
 			BA.mf:SetWidth(50*val)
 			BA.mf:SetHeight(50*val)
 			BA.mf.activeText:SetFont(BoldFont, 6*val, "OUTLINE")
+			swapFrame:SetPoint("BOTTOMLEFT", swapFrame:GetParent(), "TOPLEFT", 0, 6 + BA.mf.activeText:GetHeight())
 		else
 			BA.print("Scale size too low. Minimum is "..minscale..".")
 		end
@@ -139,10 +141,10 @@ end, 'BLUEY', 'BLUEYANNIHILATOR')
 
 function BA.print( msg )
 	if msg == nil then
-		DEFAULT_CHAT_FRAME:AddMessage("<|cFFAAAAFFBluey Annihilator|r> ".."|cff"..colors.red.."nil")
+		BA.print("|cff"..colors.red.."nil")
 		return
 	end
-	DEFAULT_CHAT_FRAME:AddMessage("<|cFFAAAAFFBluey Annihilator|r> "..msg)
+	DEFAULT_CHAT_FRAME:AddMessage("<|cFFAAAAFFBluey Annihilator|r:"..date("%m/%d/%y %H:%M:%S").."> "..msg)
 end
 
 local function tableHasKey(table,key)
@@ -165,8 +167,9 @@ BA.ini:SetScript("OnEvent", function(self, event, ...)
 			BA.print("New major addon version, applying default settings. Please report bugs to me on discord @ |cFFAAAAFFBluey:0480|r")
 			BlueyAnnihilatorSV = defaultSettings
 			o = BlueyAnnihilatorSV
+			BA.print("Changes in this version: "..versionInfo)
 		elseif not(o.sversion == sversion) then
-			BA.print("New addon subversion.. Please report bugs to me on discord @ |cFFAAAAFFBluey:0480|r")
+			BA.print("New addon subversion. Please report bugs to me on discord @ |cFFAAAAFFBluey:0480|r")
 			for k,v in pairs(defaultSettings) do
 				if not tableHasKey(BlueyAnnihilatorSV,k) then
 					o[k] = v
@@ -174,6 +177,7 @@ BA.ini:SetScript("OnEvent", function(self, event, ...)
 				end
 			end
 			o.sversion = sversion
+			BA.print("Changes in this version: "..versionInfo)
 		else
 			BA.print("Addon loaded from state saved ".. o.lastSave..". Please report bugs to me on discord @ |cFFAAAAFFBluey:0480|r")
 		end
@@ -244,13 +248,14 @@ BA.mf:SetScript("OnDragStop", function()
 	o.relativePoint = relativePoint
 	o.xOfs = xOfs
 	o.yOfs = yOfs
-	
 end)
+
 BA.mf:SetScript("OnClick", function(self, button, down)
 	if button == "RightButton" then
 		if swapFrame:IsShown() then
 			swapFrame:Hide()
 		else
+			swapFrame:SetPoint("BOTTOMLEFT", swapFrame:GetParent(), "TOPLEFT", 0, 6 + BA.mf.activeText:GetHeight())
 			swapFrame.update("player")
 			swapFrame:Show()
 		end
@@ -284,6 +289,7 @@ BA.tf.A_users:SetText("")
 BA.receiver = CreateFrame("Frame")
 BA.receiver:SetScript("OnEvent", function(self, event, message, ...)
 	if message == prefix then
+		
 		local stacks = select(1,...)
 		if tonumber(stacks) > 2 then
 			o.stacks = tonumber(stacks)
@@ -291,8 +297,7 @@ BA.receiver:SetScript("OnEvent", function(self, event, message, ...)
 			if swapFrame.MH_enabled then
 				if swapFrame.MH_threshold and swapFrame.MH_anniLink then
 					if swapFrame.OLD_MH_itemLink and o.mhSliderVal < 45 then
-						EquipItemByName(swapFrame.OLD_MH_itemLink,16)
-						swapFrame.MH_anni = false
+						swapFrame.queue(swapFrame.OLD_MH_itemLink,16)
 					end
 				end
 			end
@@ -300,8 +305,7 @@ BA.receiver:SetScript("OnEvent", function(self, event, message, ...)
 			if swapFrame.OH_enabled then
 				if swapFrame.OH_threshold and swapFrame.OH_anniLink then
 					if swapFrame.OLD_OH_itemLink and o.ohSliderVal < 45 then
-						EquipItemByName(swapFrame.OLD_OH_itemLink,17)
-						swapFrame.OH_anni = false
+						swapFrame.queue(swapFrame.OLD_OH_itemLink,17)
 					end
 				end
 			end
@@ -367,12 +371,10 @@ BA.tracker:SetScript("OnEvent", function(self, event, ...)
 			SendAddonMessage(prefix, o.stacks , "RAID")
 			if o.stacks == 3 then
 				if swapFrame.OLD_OH_itemLink and o.ohSliderVal < 45 then
-					EquipItemByName(swapFrame.OLD_OH_itemLink,17)
-					swapFrame.OH_anni = false
+					swapFrame.queue(swapFrame.OLD_OH_itemLink,17)
 				end
 				if swapFrame.OLD_MH_itemLink and o.mhSliderVal < 45 then
-					EquipItemByName(swapFrame.OLD_MH_itemLink,16)
-					swapFrame.MH_anni = false
+					swapFrame.queue(swapFrame.OLD_MH_itemLink,16)
 				end
 			end
 		end
@@ -466,6 +468,7 @@ BA.anniWatcher:SetScript("OnEvent", function(self,event,...)
 	elseif event == ("PLAYER_REGEN_DISABLED") then
 		-- enter combat --
 		o.duration = 0
+		swapFrame.update("player")
 	elseif event == ("PLAYER_TARGET_CHANGED") then
 		BA.scanAuras()
 	end
@@ -476,7 +479,6 @@ swapFrame = CreateFrame("FRAME", "BA_swapFrame", BA.mf)
 swapFrame.needsUpdate = true
 swapFrame.annihs = {}
 swapFrame:Hide()
-swapFrame:SetPoint("BOTTOMLEFT", swapFrame:GetParent(), "TOPLEFT", 0,13)
 swapFrame:SetWidth(150)
 swapFrame:SetHeight(60)
 swapFrame.background = swapFrame:CreateTexture("swapFrame_background", "ARTWORK")
@@ -495,12 +497,10 @@ swapFrame.setActive = function(active)
 		swapFrame:UnregisterEvent("COMBAT_LOG_EVENT")
 		BA.mf.activeText:SetText(BA.mf.activeText.prefix.."off")
 		if swapFrame.OLD_MH_itemLink then
-			EquipItemByName(swapFrame.OLD_MH_itemLink,16)
-			swapFrame.MH_anni = false
+			swapFrame.queue(swapFrame.OLD_MH_itemLink,16)
 		end
 		if swapFrame.OLD_OH_itemLink then
-			EquipItemByName(swapFrame.OLD_OH_itemLink,17)
-			swapFrame.OH_anni = false
+			swapFrame.queue(swapFrame.OLD_OH_itemLink,17)
 		end
 	end
 end
@@ -526,8 +526,7 @@ sMH:SetScript("OnValueChanged", function(self,value)
 			end				
 		end	
 		if swapFrame.OLD_MH_itemLink then
-			EquipItemByName(swapFrame.OLD_MH_itemLink,16)
-			swapFrame.MH_anni = false
+			swapFrame.queue(swapFrame.OLD_MH_itemLink,16)
 		end
 	else
 		swapFrame.MH_enabled = true
@@ -558,8 +557,7 @@ sOH:SetScript("OnValueChanged", function(self,value)
 			end
 		end
 		if swapFrame.OLD_OH_itemLink then
-			EquipItemByName(swapFrame.OLD_OH_itemLink,17)
-			swapFrame.OH_anni = false
+			swapFrame.queue(swapFrame.OLD_OH_itemLink,17)
 		end
 	else
 		swapFrame.OH_enabled = true
@@ -642,7 +640,12 @@ function swapFrame.update(...)
 				"|?c?f?f?(%x*)|?H?([^:]*):?(%d+):?(%d*):?(%d*):?(%d*):?(%d*):?(%d*):?(%-?%d*):?(%-?%d*):?(%d*):?(%d*):?(%-?%d*)|?h?%[?([^%[%]]*)%]?|?h?|?r?")
 			local enchantID, enchantName = getEnchantInfo(Enchant)
 			local MHb, OHb = swapFrame.getA_buttons(itemLink)
-			
+			local texture = ANNIHILATOR_TEXTURE
+			if enchantID then
+				texture = select(3,GetSpellInfo(enchantID))
+			else
+				enchantName = "No enchant"
+			end
 			-- create frame for MH if it doesnt exist -- 
 			if not MHb then
 				swapFrame.newButton = true
@@ -651,14 +654,7 @@ function swapFrame.update(...)
 				MHb.itemLink = itemLink
 				MHb.selected = false
 				MHb.texture = MHb:CreateTexture(nil, "ARTWORK")
-				local texture = select(3,GetSpellInfo(enchantID))
-				if not texture or (strlen(texture)<5) then 
-					MHb.texture:SetTexture(ANNIHILATOR_TEXTURE)
-					enchantName = "No enchant"
-				else
-					MHb.texture:SetTexture(texture)
-				end
-				
+				MHb.texture:SetTexture(texture)
 				MHb.texture:SetAllPoints()
 
 				MHb.overlay = MHb:CreateTexture(nil, "OVERLAY")
@@ -679,15 +675,21 @@ function swapFrame.update(...)
 
 				MHb:EnableMouse(true)
 				MHb:SetScript("OnMouseDown", function(self, button, down)
-					swapFrame.MH_anniLink = self.itemLink
-					o.MH_anniLink = self.itemLink
-					for i,sMHb in ipairs(swapFrame.mhSlider.A_buttons) do
-						if sMHb.itemLink == self.itemLink then
-							sMHb.selected = true
-							sMHb.overlay:SetTexture(unpack(colors.greenrgb))
-						else
-							sMHb.selected = false
-							sMHb.overlay:SetTexture(unpack(colors.redrgb))
+					if self.itemLink == swapFrame.MH_anniLink then
+						swapFrame.MH_anniLink = nil
+						self.selected = false
+						self.overlay:SetTexture(unpack(colors.redrgb))
+					else
+						swapFrame.MH_anniLink = self.itemLink
+						o.MH_anniLink = self.itemLink
+						for i,sMHb in ipairs(swapFrame.mhSlider.A_buttons) do
+							if sMHb.itemLink == self.itemLink then
+								sMHb.selected = true
+								sMHb.overlay:SetTexture(unpack(colors.greenrgb))
+							else
+								sMHb.selected = false
+								sMHb.overlay:SetTexture(unpack(colors.redrgb))
+							end
 						end
 					end
 				end)
@@ -702,13 +704,7 @@ function swapFrame.update(...)
 				OHb.itemLink = itemLink
 				OHb.selected = false
 				OHb.texture = OHb:CreateTexture(nil, "ARTWORK")
-				local texture = select(3,GetSpellInfo(enchantID))
-				if not texture or (strlen(texture)<5) then
-					OHb.texture:SetTexture(ANNIHILATOR_TEXTURE)
-					enchantName = "No enchant"
-				else
-					OHb.texture:SetTexture(texture)
-				end
+				OHb.texture:SetTexture(texture)
 				OHb.texture:SetAllPoints()
 
 				OHb.overlay = OHb:CreateTexture(nil, "OVERLAY")
@@ -729,16 +725,22 @@ function swapFrame.update(...)
 				
 				OHb:EnableMouse(true)
 				OHb:SetScript("OnMouseDown", function(self, button, down)
-					swapFrame.OH_anniLink = self.itemLink
-					o.OH_anniLink = self.itemLink
-					for i,sOHb in ipairs(swapFrame.ohSlider.A_buttons) do
-						
-						if sOHb.itemLink == self.itemLink then
-							sOHb.selected = true
-							sOHb.overlay:SetTexture(unpack(colors.greenrgb))
-						else
-							sOHb.selected = false
-							sOHb.overlay:SetTexture(unpack(colors.redrgb))
+					if self.itemLink == swapFrame.OH_anniLink then
+						swapFrame.OH_anniLink = nil
+						self.selected = false
+						self.overlay:SetTexture(unpack(colors.redrgb))
+					else
+						swapFrame.OH_anniLink = self.itemLink
+						o.OH_anniLink = self.itemLink
+						for i,sOHb in ipairs(swapFrame.ohSlider.A_buttons) do
+							
+							if sOHb.itemLink == self.itemLink then
+								sOHb.selected = true
+								sOHb.overlay:SetTexture(unpack(colors.greenrgb))
+							else
+								sOHb.selected = false
+								sOHb.overlay:SetTexture(unpack(colors.redrgb))
+							end
 						end
 					end
 				end)
@@ -777,6 +779,90 @@ function swapFrame.update(...)
 	end
 end
 
+function swapFrame.smartEquip(equipLink, inventorySlot)
+	if IsEquippedItem(equipLink) then
+		for bagID = 0,4 do
+			local numberOfSlots = GetContainerNumSlots(bagID)
+			local itemLink
+			for slot = 1,numberOfSlots do
+				itemLink = GetContainerItemLink(bagID, slot)
+				if itemLink and itemLink == equipLink then
+					ClearCursor()
+					PickupContainerItem(bagID, slot)
+					EquipCursorItem(inventorySlot)
+					ClearCursor()
+				end
+			end
+		end
+	else
+		EquipItemByName(equipLink, inventorySlot)
+	end
+end
+
+function swapFrame.checkMH(duration, stacks)
+	if swapFrame.MH_enabled and o.autoswap then
+		if swapFrame.MH_threshold and swapFrame.MH_anniLink then
+			if ( (duration < swapFrame.MH_threshold) or (stacks < 3) ) and not(swapFrame.MH_anni) then
+				swapFrame.OLD_MH_itemLink = GetInventoryItemLink("PLAYER",16)
+				swapFrame.queue(swapFrame.MH_anniLink, 16)
+				--EquipItemByName(swapFrame.MH_anniLink, 16)
+				--swapFrame.MH_anni = true
+			elseif (duration > swapFrame.MH_threshold) and swapFrame.MH_anni then
+				if tonumber(o.stacks) < 3 then return end
+				if swapFrame.OLD_MH_itemLink then
+					swapFrame.queue(swapFrame.OLD_MH_itemLink, 16)
+					--EquipItemByName(swapFrame.OLD_MH_itemLink,16)
+					--swapFrame.MH_anni = false
+				end
+			else
+			end
+		end
+	end
+end
+
+function swapFrame.checkOH(duration, stacks)
+	if swapFrame.OH_enabled and o.autoswap then
+		if ( (duration < swapFrame.OH_threshold) or (stacks < 3) ) and swapFrame.OH_anniLink then
+			if (duration < swapFrame.OH_threshold) and not(swapFrame.OH_anni) then
+				swapFrame.OLD_OH_itemLink = GetInventoryItemLink("PLAYER",17)
+				swapFrame.queue(swapFrame.OH_anniLink, 17)
+				--EquipItemByName(swapFrame.OH_anniLink, 17)
+				--swapFrame.OH_anni = true
+			elseif (duration > swapFrame.OH_threshold) and swapFrame.OH_anni then
+				if o.stacks < 3 then return end
+				if swapFrame.OLD_OH_itemLink then
+					swapFrame.queue(swapFrame.OH_anniLink, 17)
+					--EquipItemByName(swapFrame.OLD_OH_itemLink,17)
+					--swapFrame.OH_anni = false
+				end
+			else
+			end
+		else
+		end
+	end
+end
+swapFrame.Swapper = CreateFrame("FRAME")
+function swapFrame.queue(equipLink, inventorySlot)
+	if equipLink and inventorySlot and type(inventorySlot) == "number" then
+		if not swapFrame.equipQueue then
+			swapFrame.equipQueue = {}
+		end
+		tinsert(swapFrame.equipQueue, {["link"] = equipLink, ["slot"] = inventorySlot})
+	else
+		return false
+	end
+	swapFrame.Swapper:SetScript("OnUpdate", function(self, elapsed)
+		if GetCursorInfo() then return end
+		local t = tremove(swapFrame.equipQueue, 1)
+		if t then
+			swapFrame.smartEquip(t.link, t.slot)
+		else
+			self:SetScript("OnUpdate", nil)
+		end
+	end)
+	return true
+end
+
 swapFrame:SetScript("OnEvent", function(self,event, ...)
 	if not o.active then return end
 	if event == "COMBAT_LOG_EVENT" then
@@ -787,52 +873,19 @@ swapFrame:SetScript("OnEvent", function(self,event, ...)
 			local stacks = tonumber(o.stacks)
 			if not stacks then stacks = 0 end
 			-- MH --
-			if swapFrame.MH_enabled and o.autoswap then
-				if swapFrame.MH_threshold and swapFrame.MH_anniLink then
-					if ( (duration < swapFrame.MH_threshold) or (stacks < 3) ) and not(swapFrame.MH_anni) then
-						swapFrame.OLD_MH_itemLink = GetInventoryItemLink("PLAYER",16)
-						EquipItemByName(swapFrame.MH_anniLink, 16)
-						swapFrame.MH_anni = true
-					elseif (duration > swapFrame.MH_threshold) and swapFrame.MH_anni then
-						if tonumber(o.stacks) < 3 then return end
-						if swapFrame.OLD_MH_itemLink then
-							EquipItemByName(swapFrame.OLD_MH_itemLink,16)
-							swapFrame.MH_anni = false
-						end
-					else
-						--print(duration.. " / " ..swapFrame.MH_threshold)
-					end
-				end
-			end
+			self.checkMH(duration, stacks)
 
 			-- OH --
-			if swapFrame.OH_enabled and o.autoswap then
-				if ( (duration < swapFrame.OH_threshold) or (stacks < 3) ) and swapFrame.OH_anniLink then
-					if (duration < swapFrame.OH_threshold) and not(swapFrame.OH_anni) then
-						swapFrame.OLD_OH_itemLink = GetInventoryItemLink("PLAYER",17)
-						EquipItemByName(swapFrame.OH_anniLink, 17)
-						swapFrame.OH_anni = true
-					elseif (duration > swapFrame.OH_threshold) and swapFrame.OH_anni then
-						if o.stacks < 3 then return end
-						if swapFrame.OLD_OH_itemLink then
-							EquipItemByName(swapFrame.OLD_OH_itemLink,17)
-							swapFrame.OH_anni = false
-						end
-					else
-						--print(duration.. " / " ..swapFrame.OH_threshold)
-					end
-				else
-					--print("Threshold or itemLink not set for OH")
-				end
-			end
+			self.checkOH(duration, stacks)
 		end
-
 	elseif event == "PLAYER_LOGIN" then
-		swapFrame.needsUpdate = true
-		swapFrame:UnregisterEvent("PLAYER_LOGIN")
+		self.needsUpdate = true
+		self.update("player")
+		self:UnregisterEvent("PLAYER_LOGIN")
 	elseif event == "UNIT_INVENTORY_CHANGED" then
 		if ... == "player" then
-			swapFrame.needsUpdate = true
+			self.needsUpdate = true
+			self.update(...)
 		end
 	end
 end)
