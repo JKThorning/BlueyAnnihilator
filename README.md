@@ -1,4 +1,4 @@
-# BlueyAnnihilator - Development branch
+# BlueyAnnihilator
 This version is usually not tested. If you want to test it, please feel free to do so, and report any bugs you find.
 
 Game client version 2.4.3
@@ -30,11 +30,13 @@ SLASH COMMANDS:
 - /bluey off
 - /bluey scale x -- x needs to be a number larger than 0.5. Default size is 1.
 - /bluey lock
+=======
 
 
 https://github.com/JKThorning/BlueyAnnihilator
 
 HOWTO:
+HOW TO DELETE SAVED VARIABLES:
 
 - Go to your World of Warcraft dictionary
 - Navigate to World of Warcraft\WTF\Account\{YOUR ACCOUNT NAME}\SavedVariables
